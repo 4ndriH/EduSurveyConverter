@@ -1,18 +1,36 @@
 file1 = open("clicker_export_eduapp.edu", "r")
 file2 = open("output.tex", "w")
 
-preamble = "\\documentclass[10pt]{article}\n\\usepackage{pgfplots}\n\\pgfplotsset{compat=1.18}\n\\usepackage{tikz}\n\\usepackage[margin=0.5in]{geometry}\n\\usepackage{fancyhdr} \\begin{document}\n"
-title = "\\begin{flushleft}\n\\underline{\\huge{\\textbf{Survey Thingy}}}\\\\[1mm]\n\\end{flushleft}\n"
+preamble = "\\documentclass[10pt]{article}\n" \
+           "\\usepackage{pgfplots}\n" \
+           "\\pgfplotsset{compat=1.18}\n" \
+           "\\usepackage{tikz}\n" \
+           "\\usepackage[margin=0.5in]{geometry}\n" \
+           "\\usepackage{fancyhdr}\n\n" \
+           "\\begin{document}\n"
+
+noPageBreak = "\\newenvironment{absolutelynopagebreak}\n" \
+              "{\\par\\nobreak\\vfil\penalty0\\vfilneg \\vtop\\bgroup}\n" \
+              "{\\par\\xdef\\tpd{\\the\prevdepth}\\egroup\\prevdepth=\\tpd}"
+
+title = "\\begin{flushleft}\n" \
+        "\\underline{\\huge{\\textbf{Survey Thingy}}}\\\\[1mm]\n" \
+        "\\end{flushleft}\n"
+
 file2.writelines(preamble)
+file2.writelines(noPageBreak)
 file2.writelines(title)
 
-while True:
-    line = file1.readline()
+questions = []
 
-    if not line:
+while True:
+    question = file1.readline()
+
+    if not question:
         break
 
-    line = line.strip()
+    tempTex = "\\line(1,0){530}\\\\\n" + question.strip() + "\n\\line(1,0){530}\\\\\n"
+    line = file1.readline().strip()
 
     if line.__contains__("Answer,Votes,Percent"):
         answers = []
@@ -29,25 +47,38 @@ while True:
             votes.append(int(split[1]))
             percentages.append(float(split[2]))
 
-        file2.writelines("\\begin{tikzpicture}\n\\begin{axis} [xbar, bar width=25pt, symbolic y coords={"+(",".join(answers)) + "}]\n")
-        file2.writelines("\\addplot [fill = orange] coordinates {\n")
+        tempPlot = ""
 
         for v, a in zip(votes, answers):
-            file2.writelines("(" + str(v) + "," + a + ")\n")
+            tempPlot += "(" + str(v) + "," + a + ")\n"
 
-        file2.writelines("};\n\\end{axis}\n\\end{tikzpicture}\n")
+        tempTex += "\\begin{tikzpicture}\n" \
+                   "\\begin{axis} [xbar, bar width=25pt, symbolic y coords={" + (",".join(answers)) + "}]\n" \
+                   "\\addplot [fill = orange] coordinates {" + tempPlot + "};\n" \
+                   "\\end{axis}\n" \
+                   "\\end{tikzpicture}\n"
 
-        print(percentages)
     elif line.__contains__("Answer"):
+        tempFeedback = ""
+
         while True:
             line = file1.readline().strip().replace("\"", "")
 
             if len(line) == 0:
                 break
 
-            file2.writelines(line + "\n\\\\-\\\\\n")
-    else:
-        file2.writelines("\\begin{flushleft}\n\\line(1,0){530}\\\\\n" + line + "\n\\line(1,0){530}\\\\\n\\end{flushleft}\n")
+            tempFeedback += line + "\\\\\n-\\\\\n"
+
+        tempTex += tempFeedback
+
+    questions.append(tempTex)
+
+for question in questions:
+    file2.writelines("\\begin{flushleft}\n"
+                     "\\begin{absolutelynopagebreak}\n"
+                     + question + "\n"
+                     "\\end{absolutelynopagebreak}\n"
+                     "\\end{flushleft}\n")
 
 file2.writelines("\\end{document}")
 
